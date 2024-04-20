@@ -46,6 +46,7 @@ struct bpf_local_storage;
 struct bpf_run_ctx;
 struct capture_control;
 struct cfs_rq;
+struct rsdl_rq;
 struct fs_struct;
 struct futex_pi_state;
 struct io_context;
@@ -568,6 +569,15 @@ struct sched_entity {
 	 */
 	struct sched_avg		avg;
 #endif
+};
+
+//RSDL Entity
+struct sched_rsdl_entity {
+	struct list_head list;
+	struct task_struct *task;
+	unsigned int quota;
+	unsigned int priority;
+	bool on_rq;
 };
 
 struct sched_rt_entity {
@@ -1511,7 +1521,7 @@ struct task_struct {
 	 */
 	union rv_task_monitor		rv[RV_PER_TASK_MONITORS];
 #endif
-
+    struct sched_rsdl_entity    rsdl;
 	/*
 	 * New fields for task_struct should be added above here, so that
 	 * they are included in the randomized portion of task_struct.

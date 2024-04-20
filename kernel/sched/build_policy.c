@@ -44,6 +44,8 @@
 
 #include "rt.c"
 
+#include "rsdl.c"
+
 #ifdef CONFIG_SMP
 # include "cpudeadline.c"
 # include "pelt.c"

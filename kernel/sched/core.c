@@ -4370,6 +4370,9 @@ static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
 	p->wake_entry.u_flags = CSD_TYPE_TTWU;
 	p->migration_pending = NULL;
 #endif
+    p->rsdl.task = p;
+	p->rsdl.quota = 5;
+	p->rsdl.priority = 0;
 }
 
 DEFINE_STATIC_KEY_FALSE(sched_numa_balancing);
@@ -4558,7 +4561,10 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 			p->policy = SCHED_NORMAL;
 			p->static_prio = NICE_TO_PRIO(0);
 			p->rt_priority = 0;
-		} else if (PRIO_TO_NICE(p->static_prio) < 0)
+		}else if(p->policy == SCHED_RSDL){
+            p->sched_class = &rsdl_sched_class;
+        }
+         else if (PRIO_TO_NICE(p->static_prio) < 0)
 			p->static_prio = NICE_TO_PRIO(0);
 
 		p->prio = p->normal_prio = p->static_prio;
@@ -4575,6 +4581,8 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 		return -EAGAIN;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
+    else if (p->policy == SCHED_RSDL)
+        p->sched_class = &rsdl_sched_class;
 	else
 		p->sched_class = &fair_sched_class;
 
@@ -6825,6 +6833,8 @@ static void __setscheduler_prio(struct task_struct *p, int prio)
 		p->sched_class = &dl_sched_class;
 	else if (rt_prio(prio))
 		p->sched_class = &rt_sched_class;
+    else if (p->policy == SCHED_RSDL)
+        p->sched_class = &rsdl_sched_class;
 	else
 		p->sched_class = &fair_sched_class;
 
@@ -7005,7 +7015,7 @@ void set_user_nice(struct task_struct *p, long nice)
 	 * it won't have any effect on scheduling until the task is
 	 * SCHED_DEADLINE, SCHED_FIFO or SCHED_RR:
 	 */
-	if (task_has_dl_policy(p) || task_has_rt_policy(p)) {
+	if (task_has_dl_policy(p) || task_has_rt_policy(p) || p->policy == SCHED_RSDL) {
 		p->static_prio = NICE_TO_PRIO(nice);
 		goto out_unlock;
 	}
@@ -7311,6 +7321,10 @@ static void __setscheduler_params(struct task_struct *p,
 
 	if (dl_policy(policy))
 		__setparam_dl(p, attr);
+	else if(p->policy == SCHED_RSDL){
+		p->static_prio = NICE_TO_PRIO(attr->sched_nice);
+	    p->sched_class = &rsdl_sched_class;
+	}
 	else if (fair_policy(policy))
 		p->static_prio = NICE_TO_PRIO(attr->sched_nice);
 
@@ -9616,6 +9630,10 @@ void __init sched_init(void)
 #ifdef CONFIG_SMP
 	BUG_ON(&dl_sched_class != &stop_sched_class + 1);
 #endif
+//    BUG_ON(!sched_class_above(&dl_sched_class, &rt_sched_class));
+//	BUG_ON(!sched_class_above(&rt_sched_class, &rsdl_sched_class));
+//	BUG_ON(!sched_class_above(&rsdl_sched_class, &fair_sched_class));
+//	BUG_ON(!sched_class_above(&fair_sched_class, &idle_sched_class));
 
 	wait_bit_init();
 
@@ -9686,6 +9704,7 @@ void __init sched_init(void)
 		rq->calc_load_update = jiffies + LOAD_FREQ;
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt);
+        // init_rsdl_rq(&rq->rsdl_rq);
 		init_dl_rq(&rq->dl);
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);
@@ -9759,6 +9778,18 @@ void __init sched_init(void)
 
 		rq->core_cookie = 0UL;
 #endif
+		rq->rsdl.active = rq->rsdl.lists_a;
+		rq->rsdl.expired = rq->rsdl.lists_b;
+		rq->rsdl.nr_running = 0;
+		rq->rsdl.current_list = 0;
+		
+		for (int i = 0; i < NICE_WIDTH; i++) {
+		  INIT_LIST_HEAD(&(((rq->rsdl).lists_a[i]).list));
+		  (rq->rsdl).lists_a[i].quota = 20;
+
+		  INIT_LIST_HEAD(&(((rq->rsdl).lists_b[i]).list));
+		  (rq->rsdl).lists_b[i].quota = 0;
+		}
 	}
 
 	set_load_weight(&init_task, false);

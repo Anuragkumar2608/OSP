@@ -196,10 +196,15 @@ static inline int dl_policy(int policy)
 {
 	return policy == SCHED_DEADLINE;
 }
+
+static inline int rsdl_policy(int policy){
+    return policy == SCHED_RSDL;
+}
+
 static inline bool valid_policy(int policy)
 {
 	return idle_policy(policy) || fair_policy(policy) ||
-		rt_policy(policy) || dl_policy(policy);
+		rt_policy(policy) || dl_policy(policy) || rsdl_policy(policy);
 }
 
 static inline int task_has_idle_policy(struct task_struct *p)
@@ -215,6 +220,11 @@ static inline int task_has_rt_policy(struct task_struct *p)
 static inline int task_has_dl_policy(struct task_struct *p)
 {
 	return dl_policy(p->policy);
+}
+
+static inline int task_has_rsdl_policy(struct task_struct *p)
+{
+    return rsdl_policy(p->policy);
 }
 
 #define cap_scale(v, s) ((v)*(s) >> SCHED_CAPACITY_SHIFT)
@@ -351,6 +361,7 @@ extern int  dl_cpu_busy(int cpu, struct task_struct *p);
 
 struct cfs_rq;
 struct rt_rq;
+struct rsdl;
 
 extern struct list_head task_groups;
 
@@ -715,6 +726,21 @@ static inline bool rt_rq_is_runnable(struct rt_rq *rt_rq)
 	return rt_rq->rt_queued && rt_rq->rt_nr_running;
 }
 
+/* RSDL class' related fields in a runqueue */
+struct rsdl_list {
+  struct list_head list;
+  unsigned int quota;
+};
+
+struct rsdl_rq {
+  struct rsdl_list *active;
+  struct rsdl_list *expired;
+  unsigned int current_list;
+  unsigned int nr_running;
+  struct rsdl_list lists_a[NICE_WIDTH];
+  struct rsdl_list lists_b[NICE_WIDTH];
+};
+
 /* Deadline class' related fields in a runqueue */
 struct dl_rq {
 	/* runqueue is an rbtree, ordered by deadline */
@@ -999,6 +1025,7 @@ struct rq {
 	struct cfs_rq		cfs;
 	struct rt_rq		rt;
 	struct dl_rq		dl;
+    struct rsdl_rq      rsdl;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* list of leaf cfs_rq on this CPU: */
@@ -2259,6 +2286,7 @@ extern struct sched_class __sched_class_lowest[];
 extern const struct sched_class stop_sched_class;
 extern const struct sched_class dl_sched_class;
 extern const struct sched_class rt_sched_class;
+extern const struct sched_class rsdl_sched_class;
 extern const struct sched_class fair_sched_class;
 extern const struct sched_class idle_sched_class;
 
@@ -2765,6 +2793,7 @@ static inline void resched_latency_warn(int cpu, u64 latency) {}
 
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq);
+// extern void init_rsdl_rq(struct rsdl *rsdl_rq);
 extern void init_dl_rq(struct dl_rq *dl_rq);
 
 extern void cfs_bandwidth_usage_inc(void);

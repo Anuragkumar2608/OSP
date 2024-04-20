@@ -2931,6 +2931,14 @@ config HAVE_ATOMIC_IOMAP
 	def_bool y
 	depends on X86_32
 
+
+#config for RSDL schduler
+menu "RSDL Scheduler"
+config SCHED_RSDL_POLICY
+    bool "RSDL scheduling policy"
+    default y
+endmenu
+
 source "arch/x86/kvm/Kconfig"
 
 source "arch/x86/Kconfig.assembler"

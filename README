@@ -16,3 +16,9 @@ several of them using the Restructured Text markup notation.
 Please read the Documentation/process/changes.rst file, as it contains the
 requirements for building and running the kernel, and information about
 the problems which may result by upgrading your kernel.
+
+The system call numbered 548 - sys_isolate isolates the 4th core of the CPU and removes all processes running on that core.
+
+Implemented the RSDL scheduler - scheduler number 7 - can be set as the scheduler for a given program using the sched_setscheduler() system call.
+
+The system call numbered 549 - sys_mmcontext can save the heap memory of a process using the argument value as 0 and then restore it back using argument value as 1.

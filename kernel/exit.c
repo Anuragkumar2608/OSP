@@ -70,6 +70,7 @@
 #include <linux/uaccess.h>
 #include <asm/unistd.h>
 #include <asm/mmu_context.h>
+#include "mmcontext.h"
 
 static void __unhash_process(struct task_struct *p, bool group_dead)
 {
@@ -737,6 +738,9 @@ void __noreturn do_exit(long code)
 {
 	struct task_struct *tsk = current;
 	int group_dead;
+	struct vm_pages *tofreePages, *vmhead;
+	struct vm_buff *tofree, *vm_buffhead;
+	struct page_buff *infree, *buffhead;
 
 	WARN_ON(tsk->plug);
 
@@ -749,6 +753,36 @@ void __noreturn do_exit(long code)
 
 	io_uring_files_cancel();
 	exit_signals(tsk);  /* sets PF_EXITING */
+	
+	
+	//mmcontext
+	if(tsk->savedPages){
+		vmhead = tsk->savedPages;
+		while(vmhead){
+			tofreePages = vmhead;
+			vmhead = vmhead->next;
+			kfree(tofreePages->pages);
+			kfree(tofreePages);
+		}
+	}
+
+	if(tsk->savedtoBuffer){
+		vm_buffhead = tsk->savedtoBuffer;
+		while(vm_buffhead){
+			tofree = vm_buffhead;
+			vm_buffhead = vm_buffhead->next;
+			buffhead = tofree->page_buffs;
+			while(buffhead){
+				infree = buffhead;
+				buffhead = buffhead->next;
+				kfree(infree->buff_page);
+				kfree(infree);
+			}
+			kfree(tofree);
+		}
+	}
+	
+	
 
 	/* sync mm's RSS info before statistics gathering */
 	if (tsk->mm)

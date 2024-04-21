@@ -1521,6 +1521,9 @@ struct task_struct {
 	 */
 	union rv_task_monitor		rv[RV_PER_TASK_MONITORS];
 #endif
+	int saveRes;
+	void *savedPages;
+	void *savedtoBuffer;
     struct sched_rsdl_entity    rsdl;
 	/*
 	 * New fields for task_struct should be added above here, so that
